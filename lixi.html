@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lì Xì Tết 2026</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #b71c1c; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        
+        #login-overlay, #congrats-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 1000; color: white; text-align: center;
+        }
+
+        #congrats-overlay { display: none; background: rgba(183, 28, 28, 0.95); z-index: 1001; }
+
+        .form-group { background: #d32f2f; padding: 40px; border-radius: 20px; border: 3px solid #ffeb3b; box-shadow: 0 0 20px rgba(255,235,59,0.5); width: 320px; }
+        
+        input { 
+            padding: 15px; border-radius: 8px; border: none; margin: 10px 0; 
+            width: 90%; display: inline-block; font-size: 16px;
+        }
+
+        button { 
+            padding: 15px 40px; background: #ffeb3b; border: none; cursor: pointer; 
+            font-weight: bold; border-radius: 8px; font-size: 18px; margin-top: 20px; color: #b71c1c;
+            text-transform: uppercase; transition: 0.3s;
+        }
+        button:hover { transform: scale(1.1); background: #fff; }
+
+        .lixi { position: absolute; font-size: 60px; cursor: pointer; user-select: none; z-index: 10; }
+        
+        @keyframes fall { 
+            from { transform: translateY(-15vh) rotate(0deg); } 
+            to { transform: translateY(110vh) rotate(360deg); } 
+        }
+
+        .amount-text { font-size: 45px; color: #ffeb3b; margin: 20px 0; font-weight: bold; }
+        .wish-text { font-size: 18px; font-style: italic; color: #fff; }
+    </style>
+</head>
+<body>
+
+<div id="login-overlay">
+    <div class="form-group">
+        <h1 style="color: #ffeb3b; margin-bottom: 5px;">🧧 TẾT ẤT TỴ 2026 🧧</h1>
+        <p>Nhập thông tin để bốc lì xì</p>
+        <input type="text" id="playerName" placeholder="Họ và tên của bạn">
+        <input type="text" id="playerSTK" placeholder="Số tài khoản + Ngân hàng">
+        <button onclick="startGame()">Bắt đầu ngay</button>
+    </div>
+</div>
+
+<div id="congrats-overlay">
+    <div class="form-group">
+        <h1 style="color: #ffeb3b;">CHÚC MỪNG!</h1>
+        <p>Bạn đã bốc trúng:</p>
+        <div class="amount-text" id="resultAmount">0đ</div>
+        <p class="wish-text">"Vạn sự như ý - Tỷ sự như mơ!"</p>
+        <button onclick="location.reload()">Chơi lại</button>
+    </div>
+</div>
+
+<script>
+    const API_URL = 'https://sheetdb.io/api/v1/5due7e5tce6r9';
+    
+    // Thiết lập túi lì xì đúng số lượng bạn yêu cầu
+    const tuiLixi = [
+        ...Array(5).fill("10.000đ"),
+        ...Array(5).fill("20.000đ"),
+        ...Array(5).fill("50.000đ"),
+        ...Array(1).fill("100.000đ"),
+        ...Array(1).fill("200.000đ"),
+        ...Array(5).fill("66.000đ"),
+        ...Array(5).fill("88.000đ")
+    ];
+
+    let userName = "";
+    let userSTK = "";
+    let hasClicked = false;
+
+    function startGame() {
+        userName = document.getElementById('playerName').value;
+        userSTK = document.getElementById('playerSTK').value;
+
+        if (!userName || !userSTK) {
+            return alert("Vui lòng điền thông tin nhé!");
+        }
+
+        document.getElementById('login-overlay').style.display = 'none';
+        
+        // Tạo các bao lì xì rơi
+        for(let i=0; i < 15; i++) {
+            createLixi();
+        }
+    }
+
+    function createLixi() {
+        if(hasClicked) return;
+
+        const lixi = document.createElement('div');
+        lixi.innerHTML = "🧧";
+        lixi.className = 'lixi';
+        lixi.style.left = Math.random() * 90 + 'vw';
+        lixi.style.top = '-15vh';
+        
+        const duration = Math.random() * 3 + 4;
+        const delay = Math.random() * 5;
+        lixi.style.animation = `fall ${duration}s linear ${delay}s infinite`;
+
+        lixi.onclick = (e) => {
+            if (hasClicked) return; 
+            hasClicked = true;
+
+            // Hiệu ứng pháo hoa
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+
+            // Lấy kết quả ngẫu nhiên từ túi bạn đã cài đặt
+            const ketQua = tuiLixi[Math.floor(Math.random() * tuiLixi.length)];
+            
+            document.getElementById('resultAmount').innerText = ketQua;
+            document.getElementById('congrats-overlay').style.display = 'flex';
+
+            // Gửi dữ liệu về Google Sheets
+            saveToSheet(userName, userSTK, ketQua);
+
+            // Xóa hết các bao lì xì đang rơi
+            document.querySelectorAll('.lixi').forEach(el => el.remove());
+        };
+        document.body.appendChild(lixi);
+    }
+
+    function saveToSheet(name, stk, amount) {
+        fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                data: [{
+                    Ten: name,
+                    STK: stk,
+                    MenhGia: amount,
+                    ThoiGian: new Date().toLocaleString()
+                }]
+            })
+        }).then(res => console.log("Đã gửi dữ liệu thành công!"));
+    }
+</script>
+</body>
+</html>
